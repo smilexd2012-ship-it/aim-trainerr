@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aim Training Timer</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #080c12;
+      color: white;
+    }
+
+    body {
+      user-select: none;
+    }
+
+    .topbar {
+      height: 82px;
+      padding: 0 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      background: #101721;
+      border-bottom: 1px solid #263342;
+    }
+
+    .logo {
+      font-size: 25px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    .logo span {
+      color: #55ddff;
+    }
+
+    .stats {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .stat {
+      min-width: 72px;
+      text-align: center;
+      color: #9eabb9;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .statValue {
+      margin-top: 5px;
+      color: #ffffff;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    #timeDisplay {
+      color: #55ddff;
+    }
+
+    #gameArea {
+      position: relative;
+      width: 100%;
+      height: calc(100% - 82px);
+      overflow: hidden;
+      cursor: crosshair;
+      background:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+        radial-gradient(circle at center, #17212c 0%, #0b1017 60%, #070a0f 100%);
+      background-size: 45px 45px, 45px 45px, 100% 100%;
+    }
+
+    #target {
+      position: absolute;
+      width: 72px;
+      height: 72px;
+      display: none;
+      border-radius: 50%;
+      border: 5px solid white;
+      background: #ff3d4f;
+      box-shadow:
+        0 0 0 5px #ff3d4f,
+        0 0 28px rgba(255, 61, 79, 0.75);
+      cursor: crosshair;
+      transform: translate(0, 0);
+    }
+
+    #target::before {
+      content: "";
+      position: absolute;
+      inset: 17px;
+      border-radius: 50%;
+      border: 3px solid white;
+    }
+
+    #target::after {
+      content: "";
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: white;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(3, 7, 11, 0.66);
+      backdrop-filter: blur(5px);
+    }
+
+    .panel {
+      width: 410px;
+      max-width: calc(100% - 30px);
+      padding: 30px;
+      text-align: center;
+      background: #111923;
+      border: 1px solid #2b3a4a;
+      border-radius: 18px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.55);
+    }
+
+    .panel h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+    }
+
+    .panel p {
+      margin: 0 0 24px;
+      color: #9eabb9;
+    }
+
+    .timeButtons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .timeButton {
+      color: white;
+      background: #1b2632;
+      border: 1px solid #334252;
+    }
+
+    .timeButton:hover,
+    .timeButton.selected {
+      background: #174f62;
+      border-color: #55ddff;
+    }
+
+    .mainButton {
+      width: 100%;
+      color: #031017;
+      background: #55ddff;
+      font-size: 17px;
+    }
+
+    .mainButton:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .resultGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 22px 0;
+    }
+
+    .resultBox {
+      padding: 14px;
+      border-radius: 10px;
+      background: #0c131c;
+      border: 1px solid #263342;
+    }
+
+    .resultBox small {
+      display: block;
+      color: #8996a5;
+      margin-bottom: 5px;
+    }
+
+    .resultBox strong {
+      font-size: 22px;
+      color: #55ddff;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .countdown {
+      position: absolute;
+      z-index: 4;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 90px;
+      font-weight: 900;
+      color: white;
+      text-shadow: 0 0 30px rgba(255,255,255,0.35);
+      pointer-events: none;
+      display: none;
+    }
+
+    @media (max-width: 750px) {
+      .topbar {
+        height: 105px;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .stats {
+        gap: 8px;
+        width: 100%;
+        justify-content: space-around;
+      }
+
+      .stat {
+        min-width: 55px;
+      }
+
+      .statValue {
+        font-size: 18px;
+      }
+
+      #gameArea {
+        height: calc(100% - 105px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="topbar">
+    <div class="logo">🎯 <span>AIM</span> TRAINER</div>
+
+    <div class="stats">
+      <div class="stat">
+        TIME
+        <div class="statValue" id="timeDisplay">30</div>
+      </div>
+
+      <div class="stat">
+        HITS
+        <div class="statValue" id="hitsDisplay">0</div>
+      </div>
+
+      <div class="stat">
+        MISSES
+        <div class="statValue" id="missesDisplay">0</div>
+      </div>
+
+      <div class="stat">
+        ACCURACY
+        <div class="statValue" id="accuracyDisplay">100%</div>
+      </div>
+    </div>
+  </header>
+
+  <main id="gameArea">
+    <div id="target"></div>
+    <div id="countdown" class="countdown">3</div>
+
+    <section id="startOverlay" class="overlay">
+      <div class="panel">
+        <h1>🎯 Aim Trainer</h1>
+        <p>Click the targets as fast and accurately as possible.</p>
+
+        <div class="timeButtons">
+          <button class="timeButton selected" data-time="30">30 Seconds</button>
+          <button class="timeButton" data-time="60">1 Minute</button>
+          <button class="timeButton" data-time="180">3 Minutes</button>
+          <button class="timeButton" data-time="300">5 Minutes</button>
+        </div>
+
+        <button id="startButton" class="mainButton">START TRAINING</button>
+      </div>
+    </section>
+
+    <section id="resultOverlay" class="overlay hidden">
+      <div class="panel">
+        <h1>Training Complete 🏆</h1>
+        <p>Here's how you did.</p>
+
+        <div class="resultGrid">
+          <div class="resultBox">
+            <small>HITS</small>
+            <strong id="finalHits">0</strong>
+          </div>
+
+          <div class="resultBox">
+            <small>MISSES</small>
+            <strong id="finalMisses">0</strong>
+          </div>
+
+          <div class="resultBox">
+            <small>ACCURACY</small>
+            <strong id="finalAccuracy">0%</strong>
+          </div>
+
+          <div class="resultBox">
+            <small>HITS / SECOND</small>
+            <strong id="finalHPS">0</strong>
+          </div>
+        </div>
+
+        <button id="againButton" class="mainButton">TRAIN AGAIN</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const gameArea = document.getElementById("gameArea");
+    const target = document.getElementById("target");
+    const countdown = document.getElementById("countdown");
+
+    const startOverlay = document.getElementById("startOverlay");
+    const resultOverlay = document.getElementById("resultOverlay");
+
+    const startButton = document.getElementById("startButton");
+    const againButton = document.getElementById("againButton");
+
+    const timeDisplay = document.getElementById("timeDisplay");
+    const hitsDisplay = document.getElementById("hitsDisplay");
+    const missesDisplay = document.getElementById("missesDisplay");
+    const accuracyDisplay = document.getElementById("accuracyDisplay");
+
+    const finalHits = document.getElementById("finalHits");
+    const finalMisses = document.getElementById("finalMisses");
+    const finalAccuracy = document.getElementById("finalAccuracy");
+    const finalHPS = document.getElementById("finalHPS");
+
+    const timeButtons = document.querySelectorAll(".timeButton");
+
+    let selectedTime = 30;
+    let timeLeft = 30;
+    let hits = 0;
+    let misses = 0;
+    let gameRunning = false;
+    let timer = null;
+    let countdownTimer = null;
+
+    timeButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        timeButtons.forEach(b => b.classList.remove("selected"));
+        button.classList.add("selected");
+
+        selectedTime = Number(button.dataset.time);
+        timeLeft = selectedTime;
+        timeDisplay.textContent = formatTime(timeLeft);
+      });
+    });
+
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+
+      if (minutes > 0) {
+        return minutes + ":" + String(secs).padStart(2, "0");
+      }
+
+      return String(secs);
+    }
+
+    function updateStats() {
+      hitsDisplay.textContent = hits;
+      missesDisplay.textContent = misses;
+
+      const total = hits + misses;
+      const accuracy = total === 0 ? 100 : Math.round((hits / total) * 100);
+
+      accuracyDisplay.textContent = accuracy + "%";
+    }
+
+    function moveTarget() {
+      const padding = 15;
+
+      const maxX = gameArea.clientWidth - target.offsetWidth - padding;
+      const maxY = gameArea.clientHeight - target.offsetHeight - padding;
+
+      const x = padding + Math.random() * Math.max(1, maxX - padding);
+      const y = padding + Math.random() * Math.max(1, maxY - padding);
+
+      target.style.left = x + "px";
+      target.style.top = y + "px";
+    }
+
+    function startGame() {
+      clearInterval(timer);
+      clearInterval(countdownTimer);
+
+      hits = 0;
+      misses = 0;
+      timeLeft = selectedTime;
+      gameRunning = false;
+
+      updateStats();
+      timeDisplay.textContent = formatTime(timeLeft);
+
+      startOverlay.style.display = "none";
+      resultOverlay.classList.add("hidden");
+      target.style.display = "none";
+
+      let count = 3;
+      countdown.textContent = count;
+      countdown.style.display = "block";
+
+      countdownTimer = setInterval(() => {
+        count--;
+
+        if (count > 0) {
+          countdown.textContent = count;
+        } else {
+          clearInterval(countdownTimer);
+          countdown.style.display = "none";
+          beginTraining();
+        }
+      }, 700);
+    }
+
+    function beginTraining() {
+      gameRunning = true;
+      target.style.display = "block";
+      moveTarget();
+
+      timer = setInterval(() => {
+        timeLeft--;
+        timeDisplay.textContent = formatTime(timeLeft);
+
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function endGame() {
+      if (!gameRunning) return;
+
+      gameRunning = false;
+      clearInterval(timer);
+      clearInterval(countdownTimer);
+
+      target.style.display = "none";
+
+      const total = hits + misses;
+      const accuracy = total === 0 ? 0 : Math.round((hits / total) * 100);
+      const hps = (hits / selectedTime).toFixed(2);
+
+      finalHits.textContent = hits;
+      finalMisses.textContent = misses;
+      finalAccuracy.textContent = accuracy + "%";
+      finalHPS.textContent = hps;
+
+      resultOverlay.classList.remove("hidden");
+    }
+
+    target.addEventListener("click", event => {
+      if (!gameRunning) return;
+
+      event.stopPropagation();
+
+      hits++;
+      updateStats();
+      moveTarget();
+    });
+
+    gameArea.addEventListener("click", event => {
+      if (!gameRunning) return;
+
+      if (event.target !== target) {
+        misses++;
+        updateStats();
+      }
+    });
+
+    startButton.addEventListener("click", startGame);
+
+    againButton.addEventListener("click", () => {
+      resultOverlay.classList.add("hidden");
+      startOverlay.style.display = "flex";
+      timeDisplay.textContent = formatTime(selectedTime);
+    });
+
+    window.addEventListener("resize", () => {
+      if (gameRunning) moveTarget();
+    });
+  </script>
+
+</body>
+</html>
